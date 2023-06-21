@@ -150,8 +150,8 @@ function findSteps(scheme_id) {
         }
       ]
   */
-  return db("schemes as sc")
-    .leftJoin("steps as st", "st.scheme_id", "sc.scheme_id")
+  return db("steps as st")
+    .leftJoin("schemes as sc", "st.scheme_id", "sc.scheme_id")
     .select( "st.step_number","st.step_id", "st.instructions","sc.scheme_name")
     .where("sc.scheme_id", scheme_id)
     .orderBy("st.step_number", "asc");
