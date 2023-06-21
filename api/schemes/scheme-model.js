@@ -1,4 +1,12 @@
-function find() { // Egzersiz A
+/**
+ * @param {import("knex").Knex"} db
+ * @returns { Promise<void>}
+ */
+
+const db = require("../../data/db-config");
+
+function find() {
+  // Egzersiz A
   /*
     1A- Aşağıdaki SQL sorgusunu SQLite Studio'da "data/schemes.db3" ile karşılaştırarak inceleyin.
     LEFT joini Inner joine çevirirsek ne olur?
@@ -15,9 +23,16 @@ function find() { // Egzersiz A
     2A- Sorguyu kavradığınızda devam edin ve onu Knex'te oluşturun.
     Bu işlevden elde edilen veri kümesini döndürün.
   */
+  return db("schemes as sc")
+    .leftJoin("steps as st", "st.scheme_id", "sc.scheme_id")
+    .select("sc.scheme_id", "sc.scheme_name")
+    .count("st.step_id as number_of_steps")
+    .groupBy("sc.scheme_id")
+    .orderBy("sc.scheme_id", "asc");
 }
 
-function findById(scheme_id) { // Egzersiz B
+async function findById(scheme_id) {
+  // Egzersiz B
   /*
     1B- Aşağıdaki SQL sorgusunu SQLite Studio'da "data/schemes.db3" ile karşılaştırarak inceleyin:
 
@@ -29,7 +44,14 @@ function findById(scheme_id) { // Egzersiz B
           ON sc.scheme_id = st.scheme_id
       WHERE sc.scheme_id = 1
       ORDER BY st.step_number ASC;
+      */
+  const dataBySchemeId = await db("schemes as sc")
+    .leftJoin("steps as st", "st.scheme_id", "sc.scheme_id")
+    .select("sc.scheme_name", "st.*")
+    .where("sc.scheme_id", scheme_id)
+    .orderBy("st.step_number", "asc");
 
+  /*
     2B- Sorguyu kavradığınızda devam edin ve onu Knex'te oluşturun
     parametrik yapma: `1` hazır değeri yerine `scheme_id` kullanmalısınız.
 
@@ -56,7 +78,28 @@ function findById(scheme_id) { // Egzersiz B
 
     4B- Elde edilen diziyi ve vanilya JavaScript'i kullanarak, ile bir nesne oluşturun.
    Belirli bir "scheme_id" için adımların mevcut olduğu durum için aşağıdaki yapı:
+      */
+  if (dataBySchemeId.length == 0) {
+    return null;
+  }
+  const responseData = {
+    scheme_id: Number(scheme_id),
+    scheme_name: dataBySchemeId[0].scheme_name,
+    steps: [],
+  };
+  if (dataBySchemeId[0].step_id) {
+    dataBySchemeId.forEach((element) => {
+      const stepData = {
+        step_id: element.step_id,
+        step_number: element.step_number,
+        instructions: element.instructions,
+      };
+      responseData.steps.push(stepData);
+    });
+  }
+  return responseData;
 
+  /*
       {
         "scheme_id": 1,
         "scheme_name": "World Domination",
@@ -85,7 +128,8 @@ function findById(scheme_id) { // Egzersiz B
   */
 }
 
-function findSteps(scheme_id) { // Egzersiz C
+function findSteps(scheme_id) {
+  // Egzersiz C
   /*
     1C- Knex'te aşağıdaki verileri döndüren bir sorgu oluşturun.
     Adımlar, adım_numarası'na göre sıralanmalıdır ve dizi
@@ -106,20 +150,39 @@ function findSteps(scheme_id) { // Egzersiz C
         }
       ]
   */
+  return db("schemes as sc")
+    .leftJoin("steps as st", "st.scheme_id", "sc.scheme_id")
+    .select( "st.step_number","st.step_id", "st.instructions","sc.scheme_name")
+    .where("sc.scheme_id", scheme_id)
+    .orderBy("st.step_number", "asc");
 }
 
-function add(scheme) { // Egzersiz D
+async function add(scheme) {
+  // Egzersiz D
   /*
     1D- Bu işlev yeni bir şema oluşturur ve _yeni oluşturulan şemaya çözümlenir.
   */
+ const newScheme = {
+  scheme_name: scheme.scheme_name
+ };
+ const newSchemeId = await db("schemes").insert(newScheme);
+ return findById(newSchemeId);
 }
 
-function addStep(scheme_id, step) { // EXERCISE E
+async function addStep(scheme_id, step) {
+  // EXERCISE E
   /*
     1E- Bu işlev, verilen 'scheme_id' ile şemaya bir adım ekler.
     ve verilen "scheme_id"ye ait _tüm adımları_ çözer,
     yeni oluşturulan dahil.
   */
+    const newStep = {
+      step_number: step.step_number,
+      instructions: step.instructions,
+      scheme_id: scheme_id
+     };
+     await db("steps").insert(newStep);
+     return findSteps(scheme_id);
 }
 
 module.exports = {
@@ -128,4 +191,4 @@ module.exports = {
   findSteps,
   add,
   addStep,
-}
+};
